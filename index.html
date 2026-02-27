@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMK Telok Mas eduDash</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { darkbg: '#0f172a', darkcard: '#1e293b', darkborder: '#334155' } } }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .nav-btn.active { background-color: #eff6ff; color: #2563eb; border-right: 4px solid #2563eb; }
+        .dark .nav-btn.active { background-color: #1e293b; color: #38bdf8; border-right: 4px solid #38bdf8; }
+        .hide { display: none !important; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-darkbg dark:text-slate-200 h-screen flex overflow-hidden transition-colors duration-200">
+
+    <aside class="w-72 bg-white dark:bg-darkcard border-r border-slate-200 dark:border-darkborder flex flex-col flex-shrink-0 transition-colors duration-200 z-40">
+        <div class="p-5 border-b border-slate-100 dark:border-darkborder flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200 dark:shadow-none"><i class="fas fa-graduation-cap fa-lg"></i></div>
+            <div>
+                <h1 class="text-lg font-bold leading-tight">EduDash Pro</h1>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">SMK Telok Mas</p>
+            </div>
+        </div>
+        
+        <div class="p-4 border-b border-slate-100 dark:border-darkborder space-y-3 bg-slate-50/50 dark:bg-slate-800/20">
+            <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tahun & Peperiksaan</label>
+                <div class="flex gap-2 mt-1">
+                    <select id="selYear" class="w-1/2 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"></select>
+                    <select id="selExam" class="w-1/2 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold outline-none dark:text-white">
+                        <option value="PAT">Akhir (PAT)</option>
+                        <option value="PPT">Tengah (PPT)</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tingkatan & Kelas</label>
+                <div class="flex gap-2 mt-1">
+                    <select id="selForm" class="w-1/3 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold outline-none dark:text-white"><option value="ALL">All</option></select>
+                    <select id="selClass" class="w-2/3 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold outline-none dark:text-white"><option value="ALL">Semua Kelas</option></select>
+                </div>
+            </div>
+            <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mata Pelajaran (Subjek)</label>
+                <select id="selSubject" class="w-full p-2 mt-1 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-bold text-blue-700 dark:text-blue-400 outline-none">
+                    <option value="ALL">🌟 Keseluruhan (Semua Subjek)</option>
+                </select>
+            </div>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto py-2" id="navMenu">
+            <button onclick="switchTab('overview')" class="nav-btn active w-full flex items-center gap-3 px-6 py-3 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><i class="fas fa-chart-pie w-5"></i> Overview</button>
+            <button onclick="switchTab('kelas')" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><i class="fas fa-users w-5"></i> Kelas Ranking</button>
+            <button onclick="switchTab('subjek')" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><i class="fas fa-table w-5"></i> Subjek Heatmap</button>
+            <button onclick="switchTab('trends')" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><i class="fas fa-arrow-trend-up w-5"></i> Trends & Prog.</button>
+            <button onclick="switchTab('profiles')" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><i class="fas fa-id-card w-5"></i> Student Profiles</button>
+            <button onclick="switchTab('atrisk')" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"><i class="fas fa-triangle-exclamation w-5 text-rose-500"></i> At-Risk List</button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-100 dark:border-darkborder flex justify-between items-center">
+            <span class="text-xs font-bold text-slate-500 uppercase">Dark Mode</span>
+            <button onclick="toggleDark()" class="w-12 h-6 rounded-full bg-slate-200 dark:bg-blue-600 relative transition-colors shadow-inner">
+                <div id="darkKnob" class="w-4 h-4 rounded-full bg-white absolute top-1 left-1 transition-transform dark:translate-x-6 shadow"></div>
+            </button>
+        </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto p-6 lg:p-10 relative">
+        <header class="flex justify-between items-end mb-8">
+            <div>
+                <h2 id="pageTitle" class="text-3xl font-black tracking-tight">School Overview</h2>
+                <p id="pageSubtitle" class="text-sm text-slate-500 mt-1 font-medium">Data based on current filter selection.</p>
+            </div>
+            <div id="ntBadge" class="hidden px-3 py-1 bg-amber-100 border border-amber-200 text-amber-700 rounded-full text-xs font-bold uppercase shadow-sm">
+                Subject Not Taken
+            </div>
+        </header>
+
+        <div id="tab-overview" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white dark:bg-darkcard p-6 rounded-xl shadow-sm border border-slate-100 dark:border-darkborder border-b-4 border-b-blue-500">
+                    <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Filtered Students</p>
+                    <h3 id="o-stu" class="text-3xl font-black mt-1">0</h3>
+                </div>
+                <div class="bg-white dark:bg-darkcard p-6 rounded-xl shadow-sm border border-slate-100 dark:border-darkborder border-b-4 border-b-emerald-500">
+                    <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Pass Rate (A-E)</p>
+                    <h3 id="o-pass" class="text-3xl font-black mt-1">0%</h3>
+                </div>
+                <div class="bg-white dark:bg-darkcard p-6 rounded-xl shadow-sm border border-slate-100 dark:border-darkborder border-b-4 border-b-amber-500">
+                    <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Target GPMP</p>
+                    <h3 id="o-gpmp" class="text-3xl font-black mt-1">0.00</h3>
+                </div>
+                <div class="bg-white dark:bg-darkcard p-6 rounded-xl shadow-sm border border-slate-100 dark:border-darkborder border-b-4 border-b-rose-500">
+                    <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Total Fails (F)</p>
+                    <h3 id="o-fail" class="text-3xl font-black mt-1 text-rose-500">0</h3>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white dark:bg-darkcard p-6 rounded-xl shadow-sm border border-slate-100 dark:border-darkborder">
+                    <h3 class="font-bold mb-4 text-xs uppercase tracking-wider text-slate-500">Historical GPMP Trend</h3>
+                    <div class="h-64"><canvas id="chartTrendLine"></canvas></div>
+                </div>
+                <div class="bg-white dark:bg-darkcard p-6 rounded-xl shadow-sm border border-slate-100 dark:border-darkborder relative">
+                    <h3 class="font-bold mb-4 text-xs uppercase tracking-wider text-slate-500">Grade Distribution <span class="text-[10px] normal-case bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full text-blue-500 font-bold cursor-pointer ml-2 border border-slate-200 dark:border-slate-600">Click slice to deep-dive</span></h3>
+                    <div class="h-64"><canvas id="chartGradesDonut"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-kelas" class="tab-content hide"><div class="bg-white dark:bg-darkcard rounded-xl shadow-sm border border-slate-100 dark:border-darkborder overflow-hidden"><table class="w-full text-left border-collapse"><thead class="bg-slate-50 dark:bg-slate-800 text-[11px] uppercase tracking-wider text-slate-500"><tr><th class="p-4">Rank</th><th class="p-4">Kelas</th><th class="p-4">Students</th><th class="p-4">GPMP</th><th class="p-4">Fails</th><th class="p-4 w-1/3">Performance Index</th></tr></thead><tbody id="tblKelas" class="text-sm divide-y divide-slate-100 dark:divide-slate-800"></tbody></table></div></div>
+        <div id="tab-subjek" class="tab-content hide"><div class="bg-white dark:bg-darkcard p-6 rounded-xl shadow-sm border border-slate-100 dark:border-darkborder overflow-x-auto"><h3 class="font-bold mb-4 text-xs uppercase tracking-wider text-slate-500">Class × Subject Heatmap (Average Marks)</h3><div id="heatmapContainer" class="min-w-max"></div></div></div>
+        <div id="tab-trends" class="tab-content hide"><div class="bg-white dark:bg-darkcard p-6 rounded-xl shadow-sm border border-slate-100 dark:border-darkborder mb-8"><h3 class="font-bold mb-4 text-xs uppercase tracking-wider text-slate-500">PPT vs PAT Comparison</h3><div class="h-80"><canvas id="chartMidVsFinal"></canvas></div></div></div>
+        
+        <div id="tab-profiles" class="tab-content hide">
+            <input type="text" id="searchBox" class="w-full p-4 text-lg rounded-xl border border-slate-200 dark:border-darkborder bg-white dark:bg-darkcard focus:ring-2 focus:ring-blue-500 outline-none mb-4 dark:text-white shadow-sm font-medium" placeholder="🔍 Search any student by name...">
+            <div id="searchResults" class="mb-6 flex flex-col gap-2"></div>
+            <div id="profileCard" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-white dark:bg-darkcard p-6 rounded-xl shadow-sm border border-slate-100 dark:border-darkborder flex flex-col items-center text-center"><div class="w-20 h-20 bg-blue-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 text-3xl mb-4 font-black" id="p-init"></div><h3 id="p-name" class="font-black text-xl leading-tight"></h3><p id="p-meta" class="text-xs text-slate-500 dark:text-slate-400 mt-2 font-mono bg-slate-50 dark:bg-slate-800 px-3 py-1 rounded-full"></p><div class="w-full h-64 mt-6"><canvas id="chartRadar"></canvas></div></div>
+                <div class="lg:col-span-2 bg-white dark:bg-darkcard p-6 rounded-xl shadow-sm border border-slate-100 dark:border-darkborder"><h3 class="font-bold mb-4 text-xs uppercase tracking-wider text-slate-500">Detailed Subject Performance</h3><div class="grid grid-cols-2 md:grid-cols-3 gap-3" id="p-scores"></div></div>
+            </div>
+        </div>
+
+        <div id="tab-atrisk" class="tab-content hide">
+            <div class="bg-rose-50 dark:bg-rose-900/20 border-l-4 border-rose-500 p-4 mb-6 rounded-r-lg"><p class="text-sm font-bold text-rose-700 dark:text-rose-400">Critical Intervention List: Students failing 3+ subjects.</p></div>
+            <div class="bg-white dark:bg-darkcard rounded-xl shadow-sm border border-slate-100 dark:border-darkborder overflow-hidden"><table class="w-full text-left border-collapse"><thead class="bg-slate-50 dark:bg-slate-800 text-[11px] uppercase tracking-wider text-slate-500"><tr><th class="p-4">Student Name</th><th class="p-4">Masked IC</th><th class="p-4">Class</th><th class="p-4">Failed Subjects</th></tr></thead><tbody id="tblAtRisk" class="text-sm divide-y divide-slate-100 dark:divide-slate-800"></tbody></table></div>
+        </div>
+    </main>
+
+    <div id="slideBackdrop" class="fixed inset-0 bg-slate-900/40 z-50 hidden transition-opacity" onclick="closeDeepDive()"></div>
+    <div id="slidePanel" class="fixed inset-y-0 right-0 z-50 w-full md:w-3/4 xl:w-1/2 bg-slate-50 dark:bg-darkbg shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col border-l border-slate-200 dark:border-darkborder">
+        <div class="p-6 border-b border-slate-200 dark:border-darkborder flex justify-between items-center bg-white dark:bg-darkcard">
+            <div>
+                <h2 class="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-3"><span id="ddGradeBadge" class="w-8 h-8 rounded text-white flex justify-center items-center text-xl">D</span> Grade Analysis</h2>
+                <p id="ddSubtitle" class="text-sm text-slate-500 mt-1 font-medium">Loading data...</p>
+            </div>
+            <button onclick="closeDeepDive()" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 hover:text-rose-500 dark:hover:bg-rose-900/50 transition-colors flex justify-center items-center text-slate-500"><i class="fas fa-times fa-lg"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-white dark:bg-darkcard p-4 rounded-xl border border-slate-200 dark:border-darkborder shadow-sm"><p class="text-[10px] text-slate-400 font-bold uppercase">Total Students</p><h3 id="ddTotal" class="text-2xl font-black mt-1">0</h3></div>
+                <div class="bg-white dark:bg-darkcard p-4 rounded-xl border border-slate-200 dark:border-darkborder shadow-sm"><p class="text-[10px] text-slate-400 font-bold uppercase">Average Mark</p><h3 id="ddAvg" class="text-2xl font-black mt-1">0</h3></div>
+                <div class="bg-white dark:bg-darkcard p-4 rounded-xl border border-slate-200 dark:border-darkborder shadow-sm"><p class="text-[10px] text-slate-400 font-bold uppercase">Variance</p><h3 id="ddVar" class="text-2xl font-black mt-1">0</h3></div>
+            </div>
+            <div class="grid grid-cols-2 gap-6">
+                <div class="bg-white dark:bg-darkcard p-5 rounded-xl border border-slate-200 dark:border-darkborder shadow-sm">
+                    <h3 class="font-bold text-xs uppercase tracking-wider text-slate-500 mb-4">Class Contribution Pivot</h3>
+                    <div class="overflow-y-auto h-48"><table class="w-full text-left text-sm"><thead class="text-[10px] text-slate-400 uppercase border-b border-slate-100 dark:border-slate-700"><tr><th class="pb-2">Class</th><th class="pb-2">Count</th><th class="pb-2">%</th></tr></thead><tbody id="ddClassTbl" class="divide-y divide-slate-50 dark:divide-slate-800"></tbody></table></div>
+                </div>
+                <div class="bg-white dark:bg-darkcard p-5 rounded-xl border border-slate-200 dark:border-darkborder shadow-sm">
+                    <h3 class="font-bold text-xs uppercase tracking-wider text-slate-500 mb-4">Gender Profile</h3>
+                    <div class="h-48"><canvas id="chartGender"></canvas></div>
+                </div>
+            </div>
+            <div class="bg-white dark:bg-darkcard rounded-xl border border-slate-200 dark:border-darkborder shadow-sm overflow-hidden">
+                <div class="p-4 border-b border-slate-100 dark:border-darkborder bg-slate-50 dark:bg-slate-800"><h3 class="font-bold text-xs uppercase tracking-wider text-slate-500">Student List & Actionable Strengths</h3></div>
+                <table class="w-full text-left"><thead class="text-[10px] text-slate-400 uppercase bg-slate-50 dark:bg-slate-800/50"><tr><th class="p-3">Name & Class</th><th class="p-3">Mark</th><th class="p-3">⭐ Subject Strength</th></tr></thead><tbody id="ddListTbl" class="text-sm divide-y divide-slate-100 dark:divide-slate-800"></tbody></table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CORE DATA & CONFIG ---
+        let DB = [];
+        const SUBJECTS = ['BM','BI','MM','SN','PI','GEO','SEJ','PJK','PSV','ASK','BJ','RBT','BA'];
+        const PTS = {'A':1, 'B':2, 'C':3, 'D':4, 'E':5, 'F':6};
+        const COLORS = {A:'#10b981', B:'#3b82f6', C:'#f59e0b', D:'#f97316', E:'#ef4444', F:'#9f1239'};
+        let charts = {};
+        
+        Chart.register(ChartDataLabels);
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        Papa.parse('master_dashboard_data.csv', {
+            download: true, header: true, skipEmptyLines: true,
+            complete: function(res) { DB = res.data; init(); }
+        });
+
+        function init() {
+            const years = [...new Set(DB.map(d=>d.YEAR))].filter(y=>y).sort().reverse();
+            years.forEach(y => document.getElementById('selYear').innerHTML += `<option value="${y}">${y}</option>`);
+            const forms = [...new Set(DB.map(d=>d.TINGKATAN))].filter(f=>f && f!=='UNKNOWN').sort();
+            forms.forEach(f => document.getElementById('selForm').innerHTML += `<option value="${f}">${f}</option>`);
+            SUBJECTS.forEach(s => document.getElementById('selSubject').innerHTML += `<option value="${s}">${s}</option>`);
+
+            populateClasses();
+            ['selYear','selExam','selForm','selClass','selSubject'].forEach(id => {
+                document.getElementById(id).addEventListener('change', (e) => {
+                    if(id === 'selForm') populateClasses();
+                    updateApp();
+                });
+            });
+            document.getElementById('searchBox').addEventListener('keyup', searchProfile);
+            updateApp();
+        }
+
+        function populateClasses() {
+            const fm = document.getElementById('selForm').value;
+            const selClass = document.getElementById('selClass');
+            selClass.innerHTML = '<option value="ALL">Semua Kelas</option>';
+            const classes = [...new Set(DB.filter(d => fm==='ALL' || d.TINGKATAN===fm).map(d=>d.KELAS))].filter(c=>c).sort();
+            classes.forEach(c => selClass.innerHTML += `<option value="${c}">${c}</option>`);
+        }
+
+        function updateApp() {
+            const yr = document.getElementById('selYear').value;
+            const ex = document.getElementById('selExam').value;
+            const fm = document.getElementById('selForm').value;
+            const cl = document.getElementById('selClass').value;
+            const sub = document.getElementById('selSubject').value;
+
+            window.currentData = DB.filter(d => d.YEAR === yr && d.EXAM === ex && (fm === 'ALL' || d.TINGKATAN === fm) && (cl === 'ALL' || d.KELAS === cl));
+            window.currentSub = sub; // Save for Deep Dive
+
+            let subName = sub === 'ALL' ? 'Semua Subjek' : sub;
+            document.getElementById('pageSubtitle').innerText = `${yr} | ${ex} | ${(cl !== 'ALL' ? cl : (fm !== 'ALL' ? fm : 'Semua Pelajar'))} • ${subName}`;
+
+            renderOverview(window.currentData, sub, yr, fm, cl);
+            renderKelas(window.currentData, sub);
+            renderHeatmap(window.currentData);
+            renderTrends(yr, fm, cl, sub);
+            renderAtRisk(window.currentData);
+        }
+
+        // --- OVERVIEW & PIE CHART UPGRADE ---
+        function renderOverview(data, focusSub, yr, fm, cl) {
+            let marks=0, subs=0, fails=0, passes=0, ntCount=0;
+            let gc = {A:0,B:0,C:0,D:0,E:0,F:0};
+            let processSubjects = focusSub === 'ALL' ? SUBJECTS : [focusSub];
+
+            data.forEach(d => {
+                processSubjects.forEach(s => {
+                    let g = d[s+'G'];
+                    if(g === 'NT') ntCount++;
+                    else if(g && PTS[g]) {
+                        subs++; marks += PTS[g]; gc[g]++;
+                        if(g==='F') fails++; else passes++;
+                    }
+                });
+            });
+
+            const badge = document.getElementById('ntBadge');
+            if(ntCount > 0 && subs === 0) { badge.classList.remove('hidden'); badge.innerText = `Subjek Tidak Diambil`; } else { badge.classList.add('hidden'); }
+
+            document.getElementById('o-stu').innerText = data.length;
+            document.getElementById('o-gpmp').innerText = subs ? (marks/subs).toFixed(2) : "0.00";
+            document.getElementById('o-pass').innerText = subs ? Math.round((passes/subs)*100)+"%" : "0%";
+            document.getElementById('o-fail').innerText = fails;
+
+            // Trend Line
+            const years = [...new Set(DB.map(d=>d.YEAR))].sort();
+            const gpmpTrend = years.map(y => {
+                let yData = DB.filter(d => d.YEAR === String(y) && d.EXAM === 'PAT' && (fm==='ALL' || d.TINGKATAN===fm) && (cl==='ALL' || d.KELAS===cl));
+                let yS=0, yM=0;
+                yData.forEach(d => processSubjects.forEach(s => { if(PTS[d[s+'G']]) { yS++; yM+=PTS[d[s+'G']]; } }));
+                return yS ? +(yM/yS).toFixed(2) : 0;
+            });
+
+            drawChart('chartTrendLine', 'line', { labels: years, datasets: [{ label: 'Filtered GPMP', data: gpmpTrend, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0 }] });
+
+            // Upgraded Donut Chart
+            const gradesArr = ['A','B','C','D','E','F'];
+            drawChart('chartGradesDonut', 'doughnut', {
+                labels: gradesArr,
+                datasets: [{ data: [gc.A, gc.B, gc.C, gc.D, gc.E, gc.F], backgroundColor: Object.values(COLORS), borderWidth: 2, borderColor: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff' }]
+            }, {
+                plugins: {
+                    datalabels: {
+                        color: '#ffffff',
+                        backgroundColor: 'rgba(15, 23, 42, 0.65)', // Dark transparent pill background
+                        borderRadius: 6,
+                        padding: {top:4, bottom:4, left:6, right:6},
+                        font: { weight: 'bold', size: 10 },
+                        formatter: (value, context) => {
+                            if (value === 0) return null;
+                            let total = context.chart._metasets[context.datasetIndex].total;
+                            return `${value} (${Math.round((value / total) * 100)}%)`;
+                        }
+                    }
+                },
+                onClick: (e, elements) => {
+                    if(elements.length > 0) openDeepDive(gradesArr[elements[0].index]);
+                }
+            });
+        }
+
+        // --- DEEP DIVE LOGIC (THE "SUB-DASHBOARD") ---
+        function getBestSubject(student) {
+            let bestSub = '-', maxMark = -1, bestGrade = '';
+            SUBJECTS.forEach(s => {
+                let m = parseFloat(student[s]);
+                if (!isNaN(m) && m > maxMark && student[s+'G'] !== 'NT') { maxMark = m; bestSub = s; bestGrade = student[s+'G']; }
+            });
+            return { sub: bestSub, grade: bestGrade, color: COLORS[bestGrade] || '#ccc' };
+        }
+
+        function openDeepDive(gradeClicked) {
+            let instances = [];
+            let processSubjects = window.currentSub === 'ALL' ? SUBJECTS : [window.currentSub];
+            
+            window.currentData.forEach(d => {
+                processSubjects.forEach(s => {
+                    if (d[s+'G'] === gradeClicked) {
+                        instances.push({
+                            nama: d.NAMA, kelas: d.KELAS, rawIC: d.NOKP,
+                            ic: d.NOKP ? String(d.NOKP).replace(/(\d{6})(\d{2})(\d{4})/, "$1-$2-XXXX") : "N/A",
+                            subjek: s, mark: parseFloat(d[s]) || 0,
+                            best: getBestSubject(d)
+                        });
+                    }
+                });
+            });
+
+            if(instances.length === 0) return; // Ignore if empty
+
+            // Setup Header
+            document.getElementById('ddGradeBadge').innerText = gradeClicked;
+            document.getElementById('ddGradeBadge').style.backgroundColor = COLORS[gradeClicked];
+            document.getElementById('ddSubtitle').innerText = `${window.currentSub === 'ALL' ? 'Semua Subjek' : window.currentSub} — Clicked from Donut Chart`;
+
+            // Calculate Metrics
+            let count = instances.length;
+            let avgMark = instances.reduce((sum, i) => sum + i.mark, 0) / count;
+            let variance = instances.reduce((sum, i) => sum + Math.pow(i.mark - avgMark, 2), 0) / count;
+            
+            document.getElementById('ddTotal').innerText = count;
+            document.getElementById('ddAvg').innerText = avgMark.toFixed(1);
+            document.getElementById('ddVar').innerText = variance.toFixed(1);
+
+            // Pivot Table: Class Distribution
+            let cMap = {};
+            instances.forEach(i => { cMap[i.kelas] = (cMap[i.kelas]||0) + 1; });
+            let cArr = Object.keys(cMap).map(k => ({ cls: k, cnt: cMap[k] })).sort((a,b) => b.cnt - a.cnt);
+            
+            document.getElementById('ddClassTbl').innerHTML = cArr.map(c => 
+                `<tr><td class="py-2 font-bold text-slate-700 dark:text-slate-300">${c.cls}</td><td class="py-2">${c.cnt}</td><td class="py-2 font-bold text-blue-500">${Math.round((c.cnt/count)*100)}%</td></tr>`
+            ).join('');
+
+            // Gender Profile
+            let males = 0, females = 0;
+            instances.forEach(i => {
+                let lastDigit = parseInt(String(i.rawIC).slice(-1));
+                if (!isNaN(lastDigit)) { (lastDigit % 2 === 0) ? females++ : males++; }
+            });
+
+            drawChart('chartGender', 'doughnut', {
+                labels: ['Lelaki', 'Perempuan'],
+                datasets: [{ data: [males, females], backgroundColor: ['#3b82f6', '#ec4899'], borderWidth: 0 }]
+            }, { plugins: { datalabels: { display: false } } }); // Hide datalabels for tiny gender chart
+
+            // Student List Table
+            document.getElementById('ddListTbl').innerHTML = instances.map(i => `
+                <tr>
+                    <td class="p-3">
+                        <p class="font-bold text-slate-800 dark:text-slate-200 text-sm">${i.nama}</p>
+                        <p class="text-[10px] font-mono text-slate-400 uppercase">${i.kelas} | ${i.ic}</p>
+                    </td>
+                    <td class="p-3 font-black text-lg" style="color:${COLORS[gradeClicked]}">${i.mark}</td>
+                    <td class="p-3">
+                        <span class="text-[10px] font-bold text-slate-500">Best in</span><br>
+                        <span class="px-2 py-1 rounded-md text-[10px] font-bold text-white shadow-sm" style="background:${i.best.color}">${i.best.sub} (${i.best.grade})</span>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Slide it in
+            document.getElementById('slideBackdrop').classList.remove('hidden');
+            document.getElementById('slidePanel').classList.remove('translate-x-full');
+        }
+
+        function closeDeepDive() {
+            document.getElementById('slidePanel').classList.add('translate-x-full');
+            setTimeout(() => { document.getElementById('slideBackdrop').classList.add('hidden'); }, 300);
+        }
+
+
+        // --- REMAINING RENDER FUNCTIONS (Same as before) ---
+        function renderKelas(data, focusSub) { let processSubjects = focusSub === 'ALL' ? SUBJECTS : [focusSub]; let kMap = {}; data.forEach(d => { let k = d.KELAS; if(!kMap[k]) kMap[k] = {stu:0, pts:0, subs:0, fails:0}; kMap[k].stu++; processSubjects.forEach(s => { if(PTS[d[s+'G']]) { kMap[k].subs++; kMap[k].pts += PTS[d[s+'G']]; if(d[s+'G']==='F') kMap[k].fails++; }});}); let arr = Object.keys(kMap).map(k => ({ name: k, stu: kMap[k].stu, fails: kMap[k].fails, gpmp: kMap[k].subs ? (kMap[k].pts/kMap[k].subs).toFixed(2) : 6.00 })).sort((a,b) => a.gpmp - b.gpmp); document.getElementById('tblKelas').innerHTML = arr.map((c, i) => { let w = ((6 - c.gpmp)/5)*100; let bg = c.gpmp == 6.00 ? 'bg-slate-300 dark:bg-slate-600' : 'bg-blue-500'; return `<tr><td class="p-4 text-slate-400 font-bold">#${i+1}</td><td class="p-4 font-bold text-slate-800 dark:text-slate-200">${c.name}</td><td class="p-4">${c.stu}</td><td class="p-4 font-black ${c.gpmp==6.00 ? 'text-slate-400' : 'text-blue-600 dark:text-blue-400'}">${c.gpmp==6.00 ? 'N/A' : c.gpmp}</td><td class="p-4 text-rose-500 font-bold">${c.fails}</td><td class="p-4"><div class="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden"><div class="${bg} h-full rounded-full" style="width:${Math.max(0,w)}%"></div></div></td></tr>`; }).join(''); }
+        function renderHeatmap(data) { const classes = [...new Set(data.map(d=>d.KELAS))].sort(); let html = `<table class="w-full text-center text-xs"><thead><tr><th class="p-3 text-left">Class</th>`; SUBJECTS.forEach(s => html += `<th class="p-3 font-bold">${s}</th>`); html += `</tr></thead><tbody class="divide-y divide-slate-100 dark:divide-slate-800">`; classes.forEach(c => { html += `<tr><td class="p-3 font-bold text-left whitespace-nowrap">${c}</td>`; SUBJECTS.forEach(s => { let marks = data.filter(d=>d.KELAS===c && !isNaN(d[s]) && d[s+'G']!=='NT').map(d=>Number(d[s])); if(!marks.length) { html += `<td><div class="w-8 h-8 mx-auto flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 font-bold text-[10px]">NT</div></td>`; } else { let avg = marks.reduce((a,b)=>a+b,0)/marks.length; let bg = avg>=82?COLORS.A:avg>=66?COLORS.B:avg>=50?COLORS.C:avg>=35?COLORS.D:avg>=20?COLORS.E:COLORS.F; html += `<td><div class="w-8 h-8 mx-auto flex items-center justify-center rounded-lg text-white font-bold text-[11px] shadow-sm" style="background:${bg}" title="Avg: ${avg.toFixed(1)}">${Math.round(avg)}</div></td>`; } }); html += `</tr>`; }); document.getElementById('heatmapContainer').innerHTML = html + `</tbody></table>`; }
+        function renderTrends(yr, fm, cl, sub) { let processSubjects = sub === 'ALL' ? SUBJECTS : [sub]; const availableYears = [...new Set(DB.map(d=>d.YEAR))].sort(); let pptGpmp = [], patGpmp = []; availableYears.forEach(y => { let dPPT = DB.filter(d => d.YEAR === String(y) && d.EXAM === 'PPT' && (fm==='ALL' || d.TINGKATAN===fm) && (cl==='ALL' || d.KELAS===cl)); let dPAT = DB.filter(d => d.YEAR === String(y) && d.EXAM === 'PAT' && (fm==='ALL' || d.TINGKATAN===fm) && (cl==='ALL' || d.KELAS===cl)); let calcGPMP = (dataRows) => { let pts=0, subs=0; dataRows.forEach(d => processSubjects.forEach(s => { if(PTS[d[s+'G']]) { subs++; pts+=PTS[d[s+'G']]; } })); return subs ? +(pts/subs).toFixed(2) : 0; }; pptGpmp.push(calcGPMP(dPPT)); patGpmp.push(calcGPMP(dPAT)); }); drawChart('chartMidVsFinal', 'bar', { labels: availableYears, datasets: [ { label: 'PPT (Midterm) GPMP', data: pptGpmp, backgroundColor: '#94a3b8', borderRadius: 4 }, { label: 'PAT (Final) GPMP', data: patGpmp, backgroundColor: '#3b82f6', borderRadius: 4 } ] }); }
+        function renderAtRisk(data) { let risk = []; data.forEach(d => { let f=0; SUBJECTS.forEach(s => { if(d[s+'G']==='F') f++; }); if(f >= 3) { let ic = d.NOKP ? d.NOKP.replace(/(\d{6})(\d{2})(\d{4})/, "$1-$2-XXXX") : "N/A"; risk.push({...d, f, ic}); } }); risk.sort((a,b) => b.f - a.f); document.getElementById('tblAtRisk').innerHTML = risk.map(d => `<tr><td class="p-4 font-bold text-slate-800 dark:text-slate-200">${d.NAMA}</td><td class="p-4 font-mono text-slate-500">${d.ic}</td><td class="p-4">${d.KELAS}</td><td class="p-4"><span class="bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 px-3 py-1 rounded-full font-bold text-[11px] tracking-wide border border-rose-200 dark:border-rose-800">${d.f} Subjek</span></td></tr>`).join(''); }
+
+        // --- UTILS ---
+        function searchProfile() { const q = document.getElementById('searchBox').value.toUpperCase(); const res = document.getElementById('searchResults'); if(q.length < 3) { res.innerHTML = ''; return; } const matches = [...new Set(DB.filter(d => d.NAMA && d.NAMA.includes(q)).map(d => d.NAMA))].slice(0, 5); res.innerHTML = matches.map(m => `<div class="p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-blue-500 hover:shadow font-bold transition-all text-sm" onclick="showProfile('${m}')">${m}</div>`).join(''); }
+        function showProfile(name) { document.getElementById('searchResults').innerHTML = ''; document.getElementById('searchBox').value = ''; document.getElementById('profileCard').classList.remove('hidden'); const latest = DB.filter(d => d.NAMA === name).sort((a,b) => b.YEAR - a.YEAR)[0]; document.getElementById('p-name').innerText = name; document.getElementById('p-init').innerText = name.charAt(0); document.getElementById('p-meta').innerText = `${latest.KELAS} | IC: ${latest.NOKP.replace(/(\d{6})(\d{2})(\d{4})/, "$1-$2-XXXX")}`; let html='', labels=[], data=[]; SUBJECTS.forEach(s => { if(latest[s+'G'] !== 'NT' && latest[s+'G'] !== 'TH') { let mark = latest[s] || 0, g = latest[s+'G'] || '-'; labels.push(s); data.push(mark); html += `<div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg flex justify-between items-center border border-slate-100 dark:border-slate-700"><span class="font-bold text-sm">${s}</span><div class="flex items-center gap-3"><span class="text-xs font-medium text-slate-500">${mark}%</span><span class="w-7 h-7 flex items-center justify-center rounded text-white font-bold text-xs" style="background:${COLORS[g]||'#ccc'}">${g}</span></div></div>`; } }); document.getElementById('p-scores').innerHTML = html; drawChart('chartRadar', 'radar', { labels: labels, datasets: [{ label: 'Markah', data: data, backgroundColor: 'rgba(59,130,246,0.2)', borderColor: '#3b82f6', pointBackgroundColor: '#3b82f6' }] }, { scales: { r: { min: 0, max: 100, ticks: { display: false } } }, plugins: { datalabels: { display:false }, legend: { display: false } } }); }
+        function switchTab(id) { document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hide')); document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active')); document.getElementById('tab-'+id).classList.remove('hide'); event.currentTarget.classList.add('active'); const titles = {'overview':'School Overview', 'kelas':'Kelas Rankings', 'subjek':'Mata Pelajaran Heatmap', 'trends':'Trends & Progression', 'profiles':'Student Profiles', 'atrisk':'Critical Intervention List'}; document.getElementById('pageTitle').innerText = titles[id]; }
+        function toggleDark() { document.documentElement.classList.toggle('dark'); }
+        function drawChart(id, type, data, extOptions = {}) { if(charts[id]) charts[id].destroy(); const ctx = document.getElementById(id).getContext('2d'); charts[id] = new Chart(ctx, { type, data, options: { responsive: true, maintainAspectRatio: false, ...extOptions } }); }
+    </script>
+</body>
+</html>
